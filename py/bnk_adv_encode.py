@@ -229,6 +229,10 @@ def encode_token_weights(model, token_weight_pairs, encode_func):
     model_management.load_model_gpu(model.patcher)
     return encode_func(model.cond_stage_model, token_weight_pairs)
 
+def prepareFlux(embs_l, pooled, clip_balance):
+    l_w = 1 - max(0, clip_balance - .5) * 2
+    return torch.cat([embs_l * l_w], dim=-1), pooled
+
 def prepareXL(embs_l, embs_g, pooled, clip_balance):
     l_w = 1 - max(0, clip_balance - .5) * 2
     g_w = 1 - max(0, .5 - clip_balance) * 2
@@ -243,7 +247,7 @@ def advanced_encode(clip, text, token_normalization, weight_interpretation, w_ma
         embs_l = None
         embs_g = None
         pooled = None
-        if 'l' in tokenized and isinstance(clip.cond_stage_model, (FluxClipModel, SDXLClipModel)):
+        if 'l' in tokenized and isinstance(clip.cond_stage_model, SDXLClipModel):
             embs_l, _ = advanced_encode_from_tokens(tokenized['l'], 
                                                  token_normalization, 
                                                  weight_interpretation, 
@@ -258,7 +262,10 @@ def advanced_encode(clip, text, token_normalization, weight_interpretation, w_ma
                                                          w_max=w_max, 
                                                          return_pooled=True,
                                                          apply_to_pooled=apply_to_pooled)
-        return prepareXL(embs_l, embs_g, pooled, clip_balance)
+        if isinstance(clip.cond_stage_model, FluxClipModel):
+            return prepareFlux(embs_l, pooled, clip_balance)
+        else:
+            return prepareXL(embs_l, embs_g, pooled, clip_balance)
     else:
         return advanced_encode_from_tokens(tokenized['l'],
                                            token_normalization, 
