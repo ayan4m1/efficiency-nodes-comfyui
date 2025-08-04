@@ -229,10 +229,6 @@ def encode_token_weights(model, token_weight_pairs, encode_func):
     model_management.load_model_gpu(model.patcher)
     return encode_func(model.cond_stage_model, token_weight_pairs)
 
-def prepareFlux(embs_l, pooled, clip_balance):
-    l_w = 1 - max(0, clip_balance - .5) * 2
-    return torch.cat([embs_l * l_w], dim=-1), pooled
-
 def prepareXL(embs_l, embs_g, pooled, clip_balance):
     l_w = 1 - max(0, clip_balance - .5) * 2
     g_w = 1 - max(0, .5 - clip_balance) * 2
@@ -243,7 +239,20 @@ def prepareXL(embs_l, embs_g, pooled, clip_balance):
 
 def advanced_encode(clip, text, token_normalization, weight_interpretation, w_max=1.0, clip_balance=.5, apply_to_pooled=True):
     tokenized = clip.tokenize(text, return_word_ids=True)
-    if isinstance(clip.cond_stage_model, (FluxClipModel, SDXLClipModel, SDXLRefinerClipModel, SDXLClipG)):
+    if isinstance(clip.cond_stage_model, FluxClipModel):
+        embs_l = None
+        pooled = None
+
+        if 'l' in tokenized:
+            embs_l, _ = advanced_encode_from_tokens(tokenized['l'],
+                                                    token_normalization,
+                                                    weight_interpretation,
+                                                    lambda x: encode_token_weights(clip, x, encode_token_weights_l),
+                                                    w_max=w_max,
+                                                    return_pooled=False)
+
+        return embs_l, pooled
+    if isinstance(clip.cond_stage_model, (SDXLClipModel, SDXLRefinerClipModel, SDXLClipG)):
         embs_l = None
         embs_g = None
         pooled = None
@@ -262,10 +271,7 @@ def advanced_encode(clip, text, token_normalization, weight_interpretation, w_ma
                                                          w_max=w_max, 
                                                          return_pooled=True,
                                                          apply_to_pooled=apply_to_pooled)
-        if isinstance(clip.cond_stage_model, FluxClipModel):
-            return prepareFlux(embs_l, pooled, clip_balance)
-        else:
-            return prepareXL(embs_l, embs_g, pooled, clip_balance)
+        return prepareXL(embs_l, embs_g, pooled, clip_balance)
     else:
         return advanced_encode_from_tokens(tokenized['l'],
                                            token_normalization, 
