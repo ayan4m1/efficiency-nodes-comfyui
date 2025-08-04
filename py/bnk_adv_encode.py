@@ -240,18 +240,11 @@ def prepareXL(embs_l, embs_g, pooled, clip_balance):
 def advanced_encode(clip, text, token_normalization, weight_interpretation, w_max=1.0, clip_balance=.5, apply_to_pooled=True):
     tokenized = clip.tokenize(text, return_word_ids=True)
     if isinstance(clip.cond_stage_model, FluxClipModel):
-        embs_l = None
-        pooled = None
-
-        if 'l' in tokenized:
-            embs_l, _ = advanced_encode_from_tokens(tokenized['l'],
-                                                    token_normalization,
-                                                    weight_interpretation,
-                                                    lambda x: encode_token_weights(clip, x, encode_token_weights_l),
-                                                    w_max=w_max,
-                                                    return_pooled=False)
-
-        return embs_l, pooled
+        return advanced_encode_from_tokens(tokenized['l'],
+                                           token_normalization,
+                                           weight_interpretation,
+                                           lambda x: (clip.encode_from_tokens({'l': x}), None),
+                                           w_max=w_max)
     if isinstance(clip.cond_stage_model, (SDXLClipModel, SDXLRefinerClipModel, SDXLClipG)):
         embs_l = None
         embs_g = None
