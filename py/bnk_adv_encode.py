@@ -222,6 +222,10 @@ def encode_token_weights_l(model, token_weight_pairs):
     l_out, _ = model.clip_l.encode_token_weights(token_weight_pairs)
     return l_out, None
 
+def encode_token_weights_t5xxl(model, token_weight_pairs):
+    t5_out, _ = model.clip_t5.encode_token_weights(token_weight_pairs)
+    return t5_out, None
+
 def encode_token_weights(model, token_weight_pairs, encode_func):
     if model.layer_idx is not None:
         model.cond_stage_model.set_clip_options({"layer": model.layer_idx})
@@ -240,11 +244,31 @@ def prepareXL(embs_l, embs_g, pooled, clip_balance):
 def advanced_encode(clip, text, token_normalization, weight_interpretation, w_max=1.0, clip_balance=.5, apply_to_pooled=True):
     tokenized = clip.tokenize(text, return_word_ids=True)
     if isinstance(clip.cond_stage_model, FluxClipModel):
-        return advanced_encode_from_tokens(tokenized['l'],
-                                           token_normalization,
-                                           weight_interpretation,
-                                           lambda x: (clip.encode_from_tokens({'l': x}), None),
-                                           w_max=w_max)
+        embs_l = None
+        pooled = None
+
+        if 'l' in tokenized:
+            embs_l, _ = advanced_encode_from_tokens(tokenized['l'],
+                                                    token_normalization,
+                                                    weight_interpretation,
+                                                    lambda x: encode_token_weights(clip, x, encode_token_weights_l),
+                                                    w_max=w_max,
+                                                    return_pooled=False)
+
+        print('!!!!!!!!!!!!!!')
+        print(tokenized.keys())
+
+        if 't5xxl' in tokenized:
+            embs_t5, _ = advanced_encode_from_tokens(tokenized['t5xxl'],
+                                                    token_normalization,
+                                                    weight_interpretation,
+                                                    lambda x: encode_token_weights(clip, x, encode_token_weights_t5xxl),
+                                                    w_max=w_max,
+                                                    return_pooled=False)
+        if embs_l is not None:
+            return torch.cat([embs_l, embs_t5], dim=-1), pooled
+        else:
+            return embs_t5, pooled
     if isinstance(clip.cond_stage_model, (SDXLClipModel, SDXLRefinerClipModel, SDXLClipG)):
         embs_l = None
         embs_g = None
