@@ -5,6 +5,7 @@ from math import gcd
 
 from comfy import model_management
 from comfy.sdxl_clip import SDXLClipModel, SDXLRefinerClipModel, SDXLClipG
+from comfy.text_encoders.flux import FluxClipModel
 
 def _grouper(n, iterable):
     it = iter(iterable)
@@ -238,11 +239,11 @@ def prepareXL(embs_l, embs_g, pooled, clip_balance):
 
 def advanced_encode(clip, text, token_normalization, weight_interpretation, w_max=1.0, clip_balance=.5, apply_to_pooled=True):
     tokenized = clip.tokenize(text, return_word_ids=True)
-    if isinstance(clip.cond_stage_model, (SDXLClipModel, SDXLRefinerClipModel, SDXLClipG)):
+    if isinstance(clip.cond_stage_model, (FluxClipModel, SDXLClipModel, SDXLRefinerClipModel, SDXLClipG)):
         embs_l = None
         embs_g = None
         pooled = None
-        if 'l' in tokenized and isinstance(clip.cond_stage_model, SDXLClipModel):
+        if 'l' in tokenized and isinstance(clip.cond_stage_model, (FluxClipModel, SDXLClipModel)):
             embs_l, _ = advanced_encode_from_tokens(tokenized['l'], 
                                                  token_normalization, 
                                                  weight_interpretation, 
