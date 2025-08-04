@@ -223,7 +223,7 @@ def encode_token_weights_l(model, token_weight_pairs):
     return l_out, None
 
 def encode_token_weights_t5xxl(model, token_weight_pairs):
-    t5_out, _ = model.clip_t5.encode_token_weights(token_weight_pairs)
+    t5_out, _ = model.t5xxl.encode_token_weights(token_weight_pairs)
     return t5_out, None
 
 def encode_token_weights(model, token_weight_pairs, encode_func):
